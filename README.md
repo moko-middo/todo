@@ -14,6 +14,16 @@ React + TypeScript + Vite で作られた静的サイトなので、GitHub Pages
 
 データはすべてブラウザの localStorage に保存され、外部には送信されません。
 
+## 論文・規格 PDF を追加する
+
+GitHub の画面から `content/papers/`（論文）か `content/standards/`（規格）に PDF をアップロードして master にコミットするだけです。
+GitHub Actions のビルド時に本文が抽出され、ライブラリに並びます（詳しくは [content/README.md](content/README.md)）。
+
+> **注意:** このリポジトリは公開設定です。置いた PDF とその本文は誰でも見られる状態で再配布されます。
+> CC BY などで再配布が許されている論文・規格だけを置くか、リポジトリを非公開にしてください（非公開リポジトリの GitHub Pages には有料プランが必要です）。
+
+ローカルで試すときは `npm run extract` で抽出だけ実行できます。
+
 ## 教材について
 
 付属のサンプル 6 本は、規格・論文の**文体を練習するために書き下ろした架空の文書**で、実在の文書の引用ではありません。

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Passage, ReadingRecord, VocabEntry } from './types'
 import { SAMPLES } from './data/samples'
+import { PDF_PASSAGES } from './data/pdfPassages'
 import { passageWords } from './lib/text'
 import { useLocalStorage } from './hooks/useLocalStorage'
 import { Library } from './components/Library'
@@ -26,7 +27,7 @@ export default function App() {
   const [vocab, setVocab] = useLocalStorage<VocabEntry[]>('tadoku.vocab', [])
   const [goal, setGoal] = useLocalStorage('tadoku.goal', 100_000)
 
-  const passages = [...SAMPLES, ...custom]
+  const passages = [...PDF_PASSAGES, ...SAMPLES, ...custom]
   const open = passages.find((p) => p.id === openId)
   const total = records.reduce((sum, r) => sum + r.words, 0)
 

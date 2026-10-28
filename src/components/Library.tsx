@@ -26,7 +26,6 @@ export function Library({ passages, records, onOpen, onDelete }: Props) {
   const items = passages
     .map((p) => ({ p, words: passageWords(p), lv: level(p) }))
     .filter(({ p, lv }) => (filter === 'all' || p.category === filter) && lv <= maxLevel)
-    .sort((a, b) => a.lv - b.lv || a.words - b.words)
 
   return (
     <section>
