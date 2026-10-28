@@ -1,98 +1,98 @@
-import { useTodos } from './hooks/useTodos'
-import { TodoInput } from './components/TodoInput'
-import { TodoList } from './components/TodoList'
-import { FilterBar } from './components/FilterBar'
+import { useState } from 'react'
+import type { Passage, ReadingRecord, VocabEntry } from './types'
+import { SAMPLES } from './data/samples'
+import { passageWords } from './lib/text'
+import { useLocalStorage } from './hooks/useLocalStorage'
+import { Library } from './components/Library'
+import { Reader } from './components/Reader'
+import { ImportForm } from './components/ImportForm'
+import { Stats } from './components/Stats'
+import { Vocab } from './components/Vocab'
 
-function App() {
-  const {
-    todos,
-    allTodos,
-    filter,
-    setFilter,
-    addTodo,
-    toggleTodo,
-    deleteTodo,
-    editTodo,
-    changePriority,
-    clearCompleted,
-    activeCount,
-    completedCount,
-  } = useTodos()
+type Tab = 'library' | 'import' | 'vocab' | 'stats'
 
-  const total = allTodos.length
-  const progress = total > 0 ? Math.round((completedCount / total) * 100) : 0
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'library', label: 'ライブラリ' },
+  { id: 'import', label: '取り込む' },
+  { id: 'vocab', label: '単語帳' },
+  { id: 'stats', label: '記録' },
+]
+
+export default function App() {
+  const [tab, setTab] = useState<Tab>('library')
+  const [openId, setOpenId] = useState<string | null>(null)
+  const [custom, setCustom] = useLocalStorage<Passage[]>('tadoku.custom', [])
+  const [records, setRecords] = useLocalStorage<ReadingRecord[]>('tadoku.records', [])
+  const [vocab, setVocab] = useLocalStorage<VocabEntry[]>('tadoku.vocab', [])
+  const [goal, setGoal] = useLocalStorage('tadoku.goal', 100_000)
+
+  const passages = [...SAMPLES, ...custom]
+  const open = passages.find((p) => p.id === openId)
+  const total = records.reduce((sum, r) => sum + r.words, 0)
+
+  const finish = (p: Passage, seconds: number) => {
+    setRecords((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        passageId: p.id,
+        title: p.title,
+        words: passageWords(p),
+        seconds,
+        finishedAt: new Date().toISOString(),
+      },
+    ])
+  }
 
   return (
     <div className="app">
-      <div className="container">
-        <header className="header">
-          <h1 className="title">
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" className="title-icon">
-              <rect width="28" height="28" rx="8" fill="url(#grad)" />
-              <path d="M7 14l5 5 9-9" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              <defs>
-                <linearGradient id="grad" x1="0" y1="0" x2="28" y2="28">
-                  <stop offset="0%" stopColor="#6366f1" />
-                  <stop offset="100%" stopColor="#a855f7" />
-                </linearGradient>
-              </defs>
-            </svg>
-            TODO
-          </h1>
-          {total > 0 && (
-            <div className="header-meta">
-              <span className="meta-text">
-                {activeCount > 0 ? `残り ${activeCount} 件` : 'すべて完了！'}
-              </span>
-              <div className="progress-wrap">
-                <div className="progress-fill" style={{ width: `${progress}%` }} />
-              </div>
-              <span className="meta-percent">{progress}%</span>
-            </div>
+      <header className="header">
+        <h1>
+          Tech<span>Tadoku</span>
+        </h1>
+        <p className="muted small">規格と論文で英語多読 · 累計 {total.toLocaleString()} 語</p>
+      </header>
+
+      {open ? (
+        <Reader
+          key={open.id}
+          passage={open}
+          vocab={vocab}
+          onBack={() => setOpenId(null)}
+          onFinish={(sec) => finish(open, sec)}
+          onAddVocab={(entry) => setVocab((prev) => [...prev.filter((v) => v.word !== entry.word), entry])}
+        />
+      ) : (
+        <>
+          <nav className="tabs">
+            {TABS.map((t) => (
+              <button key={t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
+                {t.label}
+              </button>
+            ))}
+          </nav>
+          {tab === 'library' && (
+            <Library
+              passages={passages}
+              records={records}
+              onOpen={setOpenId}
+              onDelete={(id) => setCustom((prev) => prev.filter((p) => p.id !== id))}
+            />
           )}
-        </header>
-
-        <TodoInput onAdd={addTodo} />
-
-        {total > 0 && (
-          <FilterBar
-            filter={filter}
-            setFilter={setFilter}
-            activeCount={activeCount}
-            completedCount={completedCount}
-            onClearCompleted={clearCompleted}
-          />
-        )}
-
-        {todos.length > 0 ? (
-          <TodoList
-            todos={todos}
-            onToggle={toggleTodo}
-            onDelete={deleteTodo}
-            onEdit={editTodo}
-            onPriority={changePriority}
-          />
-        ) : total === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon">
-              <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-                <rect width="48" height="48" rx="14" fill="#f1f5f9" />
-                <path d="M16 24h16M16 17h10M16 31h12" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round" />
-                <circle cx="34" cy="32" r="6" fill="#6366f1" />
-                <path d="M31 32l2 2 3-3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <p className="empty-title">タスクがありません</p>
-            <p className="empty-sub">上のフォームからタスクを追加しましょう</p>
-          </div>
-        ) : (
-          <div className="empty-filter">
-            <p>このフィルターに該当するタスクはありません</p>
-          </div>
-        )}
-      </div>
+          {tab === 'import' && (
+            <ImportForm
+              onImport={(p) => {
+                setCustom((prev) => [...prev, p])
+                setOpenId(p.id)
+              }}
+            />
+          )}
+          {tab === 'vocab' && (
+            <Vocab vocab={vocab} onDelete={(word) => setVocab((prev) => prev.filter((v) => v.word !== word))} />
+          )}
+          {tab === 'stats' && <Stats records={records} goal={goal} onGoalChange={setGoal} />}
+        </>
+      )}
     </div>
   )
 }
-
-export default App
