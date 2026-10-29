@@ -95,8 +95,20 @@ def whisper():
     return _model
 
 
+def decode(audio: Path):
+    """ffmpeg で 16kHz モノラルの波形にする（faster-whisper 内蔵の PyAV 読み込みは版の相性で壊れやすいため使わない）"""
+    import numpy as np
+
+    pcm = subprocess.run(
+        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", str(audio), "-ac", "1", "-ar", "16000", "-f", "f32le", "-"],
+        check=True,
+        capture_output=True,
+    ).stdout
+    return np.frombuffer(pcm, dtype=np.float32)
+
+
 def transcribe(audio: Path) -> tuple[list[tuple[float, float, str]], float]:
-    segments, info = whisper().transcribe(str(audio), language="en", word_timestamps=True, beam_size=5)
+    segments, info = whisper().transcribe(decode(audio), language="en", word_timestamps=True, beam_size=5)
     words = [(w.start, w.end, w.word) for seg in segments for w in (seg.words or [])]
     return words, info.duration
 
