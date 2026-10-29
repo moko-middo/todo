@@ -1,97 +1,81 @@
-import { useState } from 'react'
-import type { Passage, ReadingRecord, VocabEntry } from './types'
-import { SAMPLES } from './data/samples'
-import { PDF_PASSAGES } from './data/pdfPassages'
-import { passageWords } from './lib/text'
+import { useEffect, useState } from 'react'
+import type { Episode, ListenRecord } from './types'
+import { podcastUrl } from './lib/format'
 import { useLocalStorage } from './hooks/useLocalStorage'
-import { Library } from './components/Library'
-import { Reader } from './components/Reader'
-import { ImportForm } from './components/ImportForm'
+import { EpisodeList } from './components/EpisodeList'
+import { Player } from './components/Player'
 import { Stats } from './components/Stats'
-import { Vocab } from './components/Vocab'
 
-type Tab = 'library' | 'import' | 'vocab' | 'stats'
-
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'library', label: 'ライブラリ' },
-  { id: 'import', label: '取り込む' },
-  { id: 'vocab', label: '単語帳' },
-  { id: 'stats', label: '記録' },
-]
+type Tab = 'episodes' | 'stats'
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('library')
-  const [openId, setOpenId] = useState<string | null>(null)
-  const [custom, setCustom] = useLocalStorage<Passage[]>('tadoku.custom', [])
-  const [records, setRecords] = useLocalStorage<ReadingRecord[]>('tadoku.records', [])
-  const [vocab, setVocab] = useLocalStorage<VocabEntry[]>('tadoku.vocab', [])
+  const [tab, setTab] = useState<Tab>('episodes')
+  const [episodes, setEpisodes] = useState<Episode[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [open, setOpen] = useState<{ episode: Episode; startAt: number } | null>(null)
+  const [records, setRecords] = useLocalStorage<ListenRecord[]>('tadoku.listens', [])
+  const [positions, setPositions] = useLocalStorage<Record<string, number>>('tadoku.positions', {})
   const [goal, setGoal] = useLocalStorage('tadoku.goal', 100_000)
 
-  const passages = [...PDF_PASSAGES, ...SAMPLES, ...custom]
-  const open = passages.find((p) => p.id === openId)
-  const total = records.reduce((sum, r) => sum + r.words, 0)
+  useEffect(() => {
+    fetch(podcastUrl('index.json'))
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then(setEpisodes)
+      .catch((e: Error) => setError(e.message))
+  }, [])
 
-  const finish = (p: Passage, seconds: number) => {
-    setRecords((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        passageId: p.id,
-        title: p.title,
-        words: passageWords(p),
-        seconds,
-        finishedAt: new Date().toISOString(),
-      },
-    ])
-  }
+  const total = records.reduce((sum, r) => sum + r.words, 0)
 
   return (
     <div className="app">
-      <header className="header">
-        <h1>
-          Tech<span>Tadoku</span>
-        </h1>
-        <p className="muted small">規格と論文で英語多読 · 累計 {total.toLocaleString()} 語</p>
-      </header>
-
       {open ? (
-        <Reader
-          key={open.id}
-          passage={open}
-          vocab={vocab}
-          onBack={() => setOpenId(null)}
-          onFinish={(sec) => finish(open, sec)}
-          onAddVocab={(entry) => setVocab((prev) => [...prev.filter((v) => v.word !== entry.word), entry])}
+        <Player
+          key={open.episode.id}
+          episode={open.episode}
+          startAt={open.startAt}
+          onBack={() => setOpen(null)}
+          onPosition={(sec) => setPositions((prev) => ({ ...prev, [open.episode.id]: sec }))}
+          onFinish={(seconds) =>
+            setRecords((prev) => [
+              ...prev,
+              {
+                id: crypto.randomUUID(),
+                episodeId: open.episode.id,
+                title: open.episode.title,
+                words: open.episode.words,
+                seconds,
+                finishedAt: new Date().toISOString(),
+              },
+            ])
+          }
         />
       ) : (
         <>
+          <header className="header">
+            <h1>
+              Podcast<span>Tadoku</span>
+            </h1>
+            <p className="muted small">英語ポッドキャストで多聴・多読 · 累計 {total.toLocaleString()} 語</p>
+          </header>
           <nav className="tabs">
-            {TABS.map((t) => (
-              <button key={t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
-                {t.label}
-              </button>
-            ))}
+            <button className={tab === 'episodes' ? 'active' : ''} onClick={() => setTab('episodes')}>
+              エピソード
+            </button>
+            <button className={tab === 'stats' ? 'active' : ''} onClick={() => setTab('stats')}>
+              記録
+            </button>
           </nav>
-          {tab === 'library' && (
-            <Library
-              passages={passages}
+          {tab === 'episodes' ? (
+            <EpisodeList
+              episodes={episodes}
+              error={error}
               records={records}
-              onOpen={setOpenId}
-              onDelete={(id) => setCustom((prev) => prev.filter((p) => p.id !== id))}
+              positions={positions}
+              onOpen={(ep) => setOpen({ episode: ep, startAt: positions[ep.id] ?? 0 })}
             />
+          ) : (
+            <Stats records={records} goal={goal} onGoalChange={setGoal} />
           )}
-          {tab === 'import' && (
-            <ImportForm
-              onImport={(p) => {
-                setCustom((prev) => [...prev, p])
-                setOpenId(p.id)
-              }}
-            />
-          )}
-          {tab === 'vocab' && (
-            <Vocab vocab={vocab} onDelete={(word) => setVocab((prev) => prev.filter((v) => v.word !== word))} />
-          )}
-          {tab === 'stats' && <Stats records={records} goal={goal} onGoalChange={setGoal} />}
         </>
       )}
     </div>

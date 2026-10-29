@@ -1,7 +1,8 @@
-import type { ReadingRecord } from '../types'
+import type { ListenRecord } from '../types'
+import { formatTime } from '../lib/format'
 
 interface Props {
-  records: ReadingRecord[]
+  records: ListenRecord[]
   goal: number
   onGoalChange: (goal: number) => void
 }
@@ -11,7 +12,6 @@ const GOALS = [100_000, 300_000, 1_000_000, 3_000_000]
 export function Stats({ records, goal, onGoalChange }: Props) {
   const total = records.reduce((sum, r) => sum + r.words, 0)
   const seconds = records.reduce((sum, r) => sum + r.seconds, 0)
-  const avgWpm = seconds > 0 ? Math.round((total / seconds) * 60) : 0
   const progress = Math.min(100, (total / goal) * 100)
 
   return (
@@ -22,12 +22,12 @@ export function Stats({ records, goal, onGoalChange }: Props) {
           <strong>{total.toLocaleString()}</strong>
         </div>
         <div className="stat">
-          <span className="stat-label">読んだ回数</span>
+          <span className="stat-label">聞いた回数</span>
           <strong>{records.length}</strong>
         </div>
         <div className="stat">
-          <span className="stat-label">平均 WPM</span>
-          <strong>{avgWpm}</strong>
+          <span className="stat-label">累計時間</span>
+          <strong>{formatTime(seconds)}</strong>
         </div>
       </div>
 
@@ -52,15 +52,15 @@ export function Stats({ records, goal, onGoalChange }: Props) {
 
       <h3 className="section-title">履歴</h3>
       {records.length === 0 ? (
-        <p className="empty">まだ記録がありません。ライブラリから1本読んでみましょう。</p>
+        <p className="empty">最後まで聞いたエピソードがここに記録されます。</p>
       ) : (
         <ul className="history">
           {[...records].reverse().map((r) => (
             <li key={r.id}>
               <span className="history-title">{r.title}</span>
               <span className="muted small">
-                {new Date(r.finishedAt).toLocaleDateString('ja-JP')} · {r.words} 語 ·{' '}
-                {Math.round((r.words / r.seconds) * 60)} WPM
+                {new Date(r.finishedAt).toLocaleDateString('ja-JP')} · {r.words.toLocaleString()} 語 ·{' '}
+                {formatTime(r.seconds)}
               </span>
             </li>
           ))}

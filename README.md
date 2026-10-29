@@ -1,49 +1,70 @@
-# TechTadoku — 規格と論文で英語多読
+# Podcast Tadoku — 英語ポッドキャストで多聴・多読
 
-RFC・ISO・W3C などの**技術規格**や**学術論文**を教材にした英語多読アプリです。
-React + TypeScript + Vite で作られた静的サイトなので、GitHub Pages でそのまま公開できます。
+自分で用意した英語ポッドキャスト（Gemini で作ったものなど）を、**文字起こしを見ながら聞ける**アプリです。
+音声を GitHub にアップロードするだけで、GitHub Actions が文字起こし・和訳をして GitHub Pages に公開します。
+
+公開先: https://moko-middo.github.io/todo/
 
 ## 機能
 
-- **ライブラリ** — 文書を「規格／論文」とレベル（Lv1〜5）で絞り込み。レベルは Flesch Reading Ease から自動判定
-- **リーダー** — 「読み始める」〜「読み終えた」で時間を測り、WPM を表示して累計語数に加算
-- **タップ辞書** — 本文の単語をタップすると、規格・論文頻出語の簡易辞書（MUST / SHALL / normative / ablation など）で意味を表示。未登録の語はメモ付きで登録でき、Weblio へのリンクも表示
-- **単語帳** — 登録した語を、出てきた例文と一緒に保存
-- **取り込む** — RFC や論文の本文を貼り付けて自分の教材に。PDF からコピーしたときの行中改行やハイフン区切りは自動でつなげる
-- **記録** — 累計語数・平均 WPM・目標（10万〜300万語）の進捗・履歴
+- **ハイライト** — いま話している文と単語をハイライト
+- **自動スクロール** — 話している文が常に画面の中央に来る（手でスクロールすると 5 秒止まる）
+- **和訳** — 文をタップするとその文の日本語訳。「全文和訳」で全部表示
+- **▶ この文から再生** — 文の左の ▶ で、その文に飛んで再生
+- **🔁 文リピート** — 今の文をくり返し再生（シャドーイング用）
+- **英文を隠す** — 聞き取り練習用。話し終わった単語だけが見える
+- **再生速度** 0.75〜1.5x、**5 秒戻る/進む**、続きから再生、ロック画面・イヤホンでの操作
+- **記録** — 最後まで聞いたエピソードの語数を累計（目標 10 万〜300 万語）
 
-データはすべてブラウザの localStorage に保存され、外部には送信されません。
+記録や再生位置はブラウザ内（localStorage）だけに保存されます。
 
-## 論文・規格 PDF を追加する
+## エピソードを追加する
 
-GitHub の画面から `content/papers/`（論文）か `content/standards/`（規格）に PDF をアップロードして master にコミットするだけです。
-GitHub Actions のビルド時に本文が抽出され、ライブラリに並びます（詳しくは [content/README.md](content/README.md)）。
+1. GitHub のリポジトリ画面で `content/podcasts/` を開き、**Add file → Upload files** で音声をアップロードして master にコミット
+   （mp3 / m4a / aac / ogg / opus / webm / wav / flac。wav と flac は自動で mp3 に変換）
+2. GitHub Actions が文字起こし（Whisper）して、同じ名前の `.json` をコミットし直す（10 分の音声で数分）
+3. そのままサイトがビルドされ、エピソード一覧に並ぶ
 
-> **注意:** このリポジトリは公開設定です。置いた PDF とその本文は誰でも見られる状態で再配布されます。
-> CC BY などで再配布が許されている論文・規格だけを置くか、リポジトリを非公開にしてください（非公開リポジトリの GitHub Pages には有料プランが必要です）。
+進み具合はリポジトリの **Actions** タブで見られます。
 
-ローカルで試すときは `npm run extract` で抽出だけ実行できます。
+### 和訳を付ける（Gemini API キー）
 
-## 教材について
+和訳とタイトルの自動生成には Gemini API キーが必要です（無料枠で足ります）。
 
-付属のサンプル 6 本は、規格・論文の**文体を練習するために書き下ろした架空の文書**で、実在の文書の引用ではありません。
-本物の文書は「取り込む」画面から追加してください。入手先の例:
+1. [Google AI Studio](https://aistudio.google.com/apikey) で API キーを作る
+2. リポジトリの **Settings → Secrets and variables → Actions → New repository secret** で、
+   名前 `GEMINI_API_KEY`、値にキーを登録
 
-| 入手先 | 内容 |
-| --- | --- |
-| [RFC Editor](https://www.rfc-editor.org/) | インターネット技術の規格 |
-| [W3C Standards](https://www.w3.org/TR/) | Web 標準 |
-| [NIST Publications](https://csrc.nist.gov/publications) | 米国政府の技術文書 |
-| [arXiv](https://arxiv.org/) | 論文プレプリント（論文ごとにライセンスを確認） |
+キーがない間は文字起こしだけ行い、和訳の代わりに「Google 翻訳で見る」リンクを出します。
+あとからキーを登録すると、次に Actions が動いたとき（Actions タブから **Run workflow** でも可）に訳だけが追加されます。
 
-> 取り込んだ文書は自分のブラウザ内だけに保存されます。リポジトリの `src/data/samples.ts` に追加して公開する場合は、各文書のライセンス（CC BY など）を確認してください。
+### 文字起こしを直す
+
+`content/podcasts/<名前>.json` を GitHub 上で編集できます。
+
+- `title` — 一覧に出るタイトル
+- `sentences[].ja` — 和訳
+- `sentences[].text` / `words` — 英文（`words` は `[開始秒, 終了秒, 単語]`）
+
+Whisper のモデルは既定で `small.en`。精度を上げたいときは **Settings → Secrets and variables → Actions → Variables** で
+`WHISPER_MODEL` を `medium.en` などにします（処理時間は長くなります）。
+
+### 注意
+
+- このリポジトリは公開設定なので、アップロードした音声と文字起こしは誰でも見られます
+- GitHub のファイル上限は 1 つ 100MB、Pages のサイト全体は 1GB までです（96kbps の mp3 で 15 分 ≒ 11MB）
 
 ## 開発
 
 ```bash
 npm install
-npm run dev      # 開発サーバー
-npm run build    # dist/ に本番ビルド
+npm run dev      # content/podcasts/ を public/podcasts/ に集めて開発サーバー起動
+npm run build
 ```
 
-教材を増やすには `src/data/samples.ts` の `SAMPLES` に追加します。辞書は `src/data/glossary.ts` です。
+文字起こしをローカルで試す場合（ffmpeg が必要）:
+
+```bash
+pip install -r scripts/requirements.txt
+GEMINI_API_KEY=... python3 scripts/transcribe.py
+```

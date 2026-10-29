@@ -1,30 +1,39 @@
-export type Category = 'standard' | 'paper'
-
-export interface Passage {
+/** public/podcasts/index.json の 1 件（scripts/collect-podcasts.mjs が生成） */
+export interface Episode {
   id: string
   title: string
-  category: Category
-  /** 出典の説明（例: "RFC 9110 §1"、"arXiv:xxxx (CC BY 4.0)"） */
-  source: string
-  sourceUrl?: string
-  /** 段落ごとの本文 */
-  paragraphs: string[]
-  /** ユーザーが取り込んだ文書なら true */
-  custom?: boolean
+  audio: string
+  transcript: string
+  duration: number
+  words: number
+  translated: boolean
+  createdAt?: string
 }
 
-export interface ReadingRecord {
+/** [開始秒, 終了秒, 単語（前の空白を含む）] */
+export type Word = [number, number, string]
+
+export interface Sentence {
+  start: number
+  end: number
+  text: string
+  ja?: string
+  words: Word[]
+}
+
+/** content/podcasts/*.json（scripts/transcribe.py が生成） */
+export interface Transcript {
+  title: string
+  audio: string
+  duration: number
+  sentences: Sentence[]
+}
+
+export interface ListenRecord {
   id: string
-  passageId: string
+  episodeId: string
   title: string
   words: number
   seconds: number
   finishedAt: string
-}
-
-export interface VocabEntry {
-  word: string
-  meaning: string
-  context: string
-  addedAt: string
 }
