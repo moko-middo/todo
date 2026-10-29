@@ -123,7 +123,7 @@ def transcribe(audio: Path) -> tuple[list[tuple[float, float, str]], float]:
     return words, info.duration
 
 
-def to_sentences(words: list[tuple[float, float, str]], max_words: int = 40) -> list[dict]:
+def to_sentences(words: list[tuple[float, float, str]], max_words: int = 25) -> list[dict]:
     """単語列を文に分ける。文末記号・長い無音・長すぎる文（読点）で区切る"""
     sentences: list[dict] = []
     cur: list[tuple[float, float, str]] = []
