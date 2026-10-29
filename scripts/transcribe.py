@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -33,6 +34,15 @@ WHISPER_MODEL = os.environ.get("WHISPER_MODEL") or "small.en"
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL") or "gemini-flash-latest"
 TRANSLATE_BATCH = 40
+
+
+def ffmpeg() -> str:
+    """システムの ffmpeg、なければ imageio-ffmpeg 同梱のもの（GitHub Actions のランナーには ffmpeg がない）"""
+    if path := shutil.which("ffmpeg"):
+        return path
+    import imageio_ffmpeg
+
+    return imageio_ffmpeg.get_ffmpeg_exe()
 
 # 文末とみなさない略語
 ABBREV = re.compile(r"^(?:mr|mrs|ms|dr|prof|st|vs|etc|e\.g|i\.e|u\.s|no)\.$", re.I)
@@ -72,7 +82,7 @@ def convert_to_mp3(audio: Path) -> Path:
     if mp3.exists():
         sys.exit(f"{mp3.name} が既にあるため {audio.name} を変換できません。どちらかの名前を変えてください")
     subprocess.run(
-        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", str(audio), "-ac", "1", "-b:a", "96k", str(mp3)],
+        [ffmpeg(), "-hide_banner", "-loglevel", "error", "-i", str(audio), "-ac", "1", "-b:a", "96k", str(mp3)],
         check=True,
     )
     audio.unlink()
@@ -100,7 +110,7 @@ def decode(audio: Path):
     import numpy as np
 
     pcm = subprocess.run(
-        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", str(audio), "-ac", "1", "-ar", "16000", "-f", "f32le", "-"],
+        [ffmpeg(), "-hide_banner", "-loglevel", "error", "-i", str(audio), "-ac", "1", "-ar", "16000", "-f", "f32le", "-"],
         check=True,
         capture_output=True,
     ).stdout
