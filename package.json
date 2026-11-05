@@ -1,13 +1,10 @@
 {
-  "name": "podcast-tadoku",
+  "name": "eisakubun-900",
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "collect": "node scripts/collect-podcasts.mjs",
-    "predev": "npm run collect",
     "dev": "vite",
-    "prebuild": "npm run collect",
     "build": "tsc -b && vite build",
     "preview": "vite preview"
   },

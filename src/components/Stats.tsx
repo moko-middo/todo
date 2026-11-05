@@ -1,70 +1,72 @@
-import type { ListenRecord } from '../types'
-import { formatTime } from '../lib/format'
+import type { AnswerLog, ProblemSource } from '../types'
 
 interface Props {
-  records: ListenRecord[]
-  goal: number
-  onGoalChange: (goal: number) => void
+  problems: ProblemSource[]
+  logs: AnswerLog[]
+  onReset: () => void
 }
 
-const GOALS = [100_000, 300_000, 1_000_000, 3_000_000]
+export function Stats({ problems, logs, onReset }: Props) {
+  const correct = logs.filter((l) => l.correct).length
+  const latest = new Map<string, boolean>()
+  for (const l of logs) latest.set(l.problemId, l.correct)
+  const mastered = [...latest.values()].filter(Boolean).length
 
-export function Stats({ records, goal, onGoalChange }: Props) {
-  const total = records.reduce((sum, r) => sum + r.words, 0)
-  const seconds = records.reduce((sum, r) => sum + r.seconds, 0)
-  const progress = Math.min(100, (total / goal) * 100)
+  const tags = [...new Set(problems.map((p) => p.tag))]
+  const byTag = tags.map((tag) => {
+    const ids = new Set(problems.filter((p) => p.tag === tag).map((p) => p.id))
+    const tagLogs = logs.filter((l) => ids.has(l.problemId))
+    const done = [...ids].filter((id) => latest.get(id)).length
+    return {
+      tag,
+      total: ids.size,
+      done,
+      rate: tagLogs.length ? Math.round((tagLogs.filter((l) => l.correct).length / tagLogs.length) * 100) : null,
+    }
+  })
 
   return (
     <section>
       <div className="stat-grid">
         <div className="stat">
-          <span className="stat-label">累計語数</span>
-          <strong>{total.toLocaleString()}</strong>
+          <span className="stat-label">解いた回数</span>
+          <strong>{logs.length}</strong>
         </div>
         <div className="stat">
-          <span className="stat-label">聞いた回数</span>
-          <strong>{records.length}</strong>
+          <span className="stat-label">正答率</span>
+          <strong>{logs.length ? Math.round((correct / logs.length) * 100) : 0}%</strong>
         </div>
         <div className="stat">
-          <span className="stat-label">累計時間</span>
-          <strong>{formatTime(seconds)}</strong>
+          <span className="stat-label">クリア</span>
+          <strong>
+            {mastered}
+            <small>/{problems.length}</small>
+          </strong>
         </div>
       </div>
 
-      <div className="goal">
-        <div className="goal-head">
-          <span>
-            目標{' '}
-            <select value={goal} onChange={(e) => onGoalChange(Number(e.target.value))}>
-              {GOALS.map((g) => (
-                <option key={g} value={g}>
-                  {g.toLocaleString()} 語
-                </option>
-              ))}
-            </select>
-          </span>
-          <span className="muted">{progress.toFixed(1)}%</span>
-        </div>
-        <div className="bar">
-          <div className="bar-fill" style={{ width: `${progress}%` }} />
-        </div>
-      </div>
-
-      <h3 className="section-title">履歴</h3>
-      {records.length === 0 ? (
-        <p className="empty">最後まで聞いたエピソードがここに記録されます。</p>
-      ) : (
-        <ul className="history">
-          {[...records].reverse().map((r) => (
-            <li key={r.id}>
-              <span className="history-title">{r.title}</span>
+      <h3 className="section-title">文法項目ごと</h3>
+      <ul className="tag-stats">
+        {byTag.map((t) => (
+          <li key={t.tag}>
+            <div className="tag-row">
+              <span>{t.tag}</span>
               <span className="muted small">
-                {new Date(r.finishedAt).toLocaleDateString('ja-JP')} · {r.words.toLocaleString()} 語 ·{' '}
-                {formatTime(r.seconds)}
+                {t.done}/{t.total} クリア{t.rate !== null && ` · 正答率 ${t.rate}%`}
               </span>
-            </li>
-          ))}
-        </ul>
+            </div>
+            <div className="bar">
+              <div className="bar-fill" style={{ width: `${(t.done / t.total) * 100}%` }} />
+            </div>
+          </li>
+        ))}
+      </ul>
+      <p className="muted small">「クリア」は最後に解いたとき正解だった問題の数です。</p>
+
+      {logs.length > 0 && (
+        <button className="sub-btn reset" onClick={() => confirm('記録をすべて消しますか？') && onReset()}>
+          記録をリセット
+        </button>
       )}
     </section>
   )
