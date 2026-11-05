@@ -1,34 +1,39 @@
-/** src/data/problems.ts に書く問題 */
-export interface ProblemSource {
+/** public/podcasts/index.json の 1 件（scripts/collect-podcasts.mjs が生成） */
+export interface Episode {
   id: string
-  tag: string
-  ja: string
-  en: string
-  alt?: string[]
-  distractors?: string[]
-  note: string
+  title: string
+  audio: string
+  transcript: string
+  duration: number
+  words: number
+  translated: boolean
+  createdAt?: string
 }
 
-/** 答えの 1 語（または `_` でつないだかたまり） */
-export interface Token {
-  /** 表示用（句読点付き） */
-  display: string
-  /** 採点で受け付ける綴り（小文字） */
-  accepts: string[]
-  /** 入力式なら日本語のヒント */
-  gloss?: string
+/** [開始秒, 終了秒, 単語（前の空白を含む）] */
+export type Word = [number, number, string]
+
+export interface Sentence {
+  start: number
+  end: number
+  text: string
+  ja?: string
+  words: Word[]
 }
 
-/** 並べ替えの選択肢カード */
-export interface Card {
-  id: number
-  /** 並べ替えカードなら英語、入力式なら日本語のヒント */
-  label: string
-  typed: boolean
+/** content/podcasts/*.json（scripts/transcribe.py が生成） */
+export interface Transcript {
+  title: string
+  audio: string
+  duration: number
+  sentences: Sentence[]
 }
 
-export interface AnswerLog {
-  problemId: string
-  correct: boolean
-  at: string
+export interface ListenRecord {
+  id: string
+  episodeId: string
+  title: string
+  words: number
+  seconds: number
+  finishedAt: string
 }
